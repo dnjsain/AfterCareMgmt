@@ -1,5 +1,5 @@
 @echo off
 cd /d "c:\Users\dnsja\Desktop\AfterCareMgmt"
 git add .
-git commit -m "Fix middleware to allow all API routes through"
+git commit -m "Add user check to debug endpoint"
 git push origin main
