@@ -1,5 +1,5 @@
 @echo off
 cd /d "c:\Users\dnsja\Desktop\AfterCareMgmt"
 git add .
-git commit -m "Add complete patient UI - dashboard, symptoms, appointments, rewards, AI insights"
+git commit -m "Fix auth error handling and secret config for Vercel"
 git push origin main
