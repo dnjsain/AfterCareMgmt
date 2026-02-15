@@ -1,14 +1,22 @@
 "use client";
 
 import { BottomNav } from "@/components/shared/bottom-nav";
-import { LayoutDashboard, FileText, Activity, Pill, LogOut } from "lucide-react";
+import {
+  LayoutDashboard,
+  Activity,
+  ClipboardList,
+  Pill,
+  MoreHorizontal,
+} from "lucide-react";
 import { signOut } from "next-auth/react";
+import { LogOut } from "lucide-react";
 
 const patientNavItems = [
   { href: "/patient/dashboard", label: "Home", icon: LayoutDashboard },
-  { href: "/patient/records", label: "Records", icon: FileText },
   { href: "/patient/vitals/log", label: "Vitals", icon: Activity },
+  { href: "/patient/symptoms", label: "Symptoms", icon: ClipboardList },
   { href: "/patient/medications", label: "Meds", icon: Pill },
+  { href: "/patient/more", label: "More", icon: MoreHorizontal },
 ];
 
 export default function PatientLayout({

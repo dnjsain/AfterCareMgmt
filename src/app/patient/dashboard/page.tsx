@@ -1,294 +1,360 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import {
-  Activity,
-  Pill,
-  Calendar,
-  ArrowRight,
-  CheckCircle2,
-  XCircle,
-} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PageHeader } from "@/components/shared/page-header";
+import {
+  Activity,
+  Pill,
+  ClipboardList,
+  Calendar,
+  Phone,
+  Trophy,
+  Heart,
+  Droplets,
+  Weight,
+  Wind,
+  CheckCircle2,
+  Circle,
+  ArrowRight,
+  Flame,
+} from "lucide-react";
 
-interface DischargePlan {
-  id: string;
-  diagnosis: string;
-  followUpDate: string | null;
-  medications: { id: string; name: string; dosage: string; frequency: string }[];
+/* ─── Mock data ─── */
+const HEALTH_SCORE = 78;
+const RECOVERY_DAY = 12;
+const RECOVERY_TOTAL = 30;
+const STREAK_DAYS = 12;
+const NEXT_MILESTONE = 14;
+
+const checklist = [
+  {
+    id: "vitals",
+    label: "Log vitals",
+    href: "/patient/vitals/log",
+    completed: false,
+  },
+  {
+    id: "meds",
+    label: "Take medications",
+    href: "/patient/medications",
+    completed: false,
+  },
+  {
+    id: "symptoms",
+    label: "Symptom check",
+    href: "/patient/symptoms",
+    completed: false,
+  },
+  {
+    id: "walk",
+    label: "Morning walk",
+    href: "#",
+    completed: true,
+  },
+];
+
+const quickStats = [
+  {
+    label: "Blood Pressure",
+    value: "128/82",
+    unit: "mmHg",
+    icon: Heart,
+    color: "text-rose-500",
+    bg: "bg-rose-500/10",
+  },
+  {
+    label: "Weight",
+    value: "72.5",
+    unit: "kg",
+    icon: Weight,
+    color: "text-blue-500",
+    bg: "bg-blue-500/10",
+  },
+  {
+    label: "Glucose",
+    value: "105",
+    unit: "mg/dL",
+    icon: Droplets,
+    color: "text-amber-500",
+    bg: "bg-amber-500/10",
+  },
+  {
+    label: "O\u2082 Saturation",
+    value: "97",
+    unit: "%",
+    icon: Wind,
+    color: "text-emerald-500",
+    bg: "bg-emerald-500/10",
+  },
+];
+
+/* ─── Helpers ─── */
+
+function getScoreInfo(score: number) {
+  if (score >= 70)
+    return {
+      label: "Looking Good",
+      stroke: "stroke-emerald-500",
+      text: "text-emerald-500",
+      badge: "success" as const,
+    };
+  if (score >= 40)
+    return {
+      label: "Needs Attention",
+      stroke: "stroke-amber-500",
+      text: "text-amber-500",
+      badge: "warning" as const,
+    };
+  return {
+    label: "Alert - Contact Care Team",
+    stroke: "stroke-red-500",
+    text: "text-red-500",
+    badge: "destructive" as const,
+  };
 }
 
-interface VitalLog {
-  id: string;
-  date: string;
-  bloodPressureSystolic: number | null;
-  bloodPressureDiastolic: number | null;
-  weight: number | null;
-  glucose: number | null;
-  temperature: number | null;
+/* ─── Health Score Circle (SVG) ─── */
+
+function HealthScoreRing({ score }: { score: number }) {
+  const info = getScoreInfo(score);
+  const radius = 54;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (score / 100) * circumference;
+
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div className="relative w-36 h-36">
+        <svg
+          className="w-full h-full -rotate-90"
+          viewBox="0 0 120 120"
+          fill="none"
+        >
+          {/* Background ring */}
+          <circle
+            cx="60"
+            cy="60"
+            r={radius}
+            strokeWidth="10"
+            className="stroke-secondary"
+          />
+          {/* Progress ring */}
+          <circle
+            cx="60"
+            cy="60"
+            r={radius}
+            strokeWidth="10"
+            strokeLinecap="round"
+            className={`${info.stroke} transition-all duration-700 ease-out`}
+            style={{
+              strokeDasharray: circumference,
+              strokeDashoffset: offset,
+            }}
+          />
+        </svg>
+        {/* Center text */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className={`text-3xl font-bold ${info.text}`}>{score}</span>
+          <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+            Health Score
+          </span>
+        </div>
+      </div>
+      <Badge variant={info.badge}>{info.label}</Badge>
+    </div>
+  );
 }
 
-interface MedLog {
-  id: string;
-  medicationId: string;
-  taken: boolean;
-  date: string;
-  medication: { name: string; dosage: string; frequency: string };
-}
+/* ─── Component ─── */
 
 export default function PatientDashboard() {
   const { data: session } = useSession();
-  const [plans, setPlans] = useState<DischargePlan[]>([]);
-  const [vitals, setVitals] = useState<VitalLog[]>([]);
-  const [medLogs, setMedLogs] = useState<MedLog[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    Promise.all([
-      fetch("/api/discharge-plans").then((r) => r.json()),
-      fetch("/api/vitals").then((r) => r.json()),
-      fetch("/api/medication-logs").then((r) => r.json()),
-    ])
-      .then(([plansData, vitalsData, medLogsData]) => {
-        setPlans(Array.isArray(plansData) ? plansData : []);
-        setVitals(Array.isArray(vitalsData) ? vitalsData : []);
-        setMedLogs(Array.isArray(medLogsData) ? medLogsData : []);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
-
-  const latestVital = vitals[0];
-  const allMedications = plans.flatMap((p) => p.medications);
-  const todayStr = new Date().toISOString().split("T")[0];
-  const todayLogs = medLogs.filter(
-    (l) => l.date.split("T")[0] === todayStr
-  );
-
-  const upcomingFollowUp = plans
-    .filter((p) => p.followUpDate && new Date(p.followUpDate) >= new Date())
-    .sort(
-      (a, b) =>
-        new Date(a.followUpDate!).getTime() - new Date(b.followUpDate!).getTime()
-    )[0];
-
-  if (loading) {
-    return (
-      <div className="py-12 text-center text-sm text-muted-foreground">
-        Loading your dashboard...
-      </div>
-    );
-  }
+  const userName = session?.user?.name || "Patient";
+  const completedCount = checklist.filter((c) => c.completed).length;
+  const streakProgress = Math.round((STREAK_DAYS / NEXT_MILESTONE) * 100);
 
   return (
-    <div>
-      <PageHeader
-        title={`Hi, ${session?.user?.name || "Patient"}`}
-        subtitle="Your recovery dashboard"
-      />
-
-      {/* Quick actions */}
-      <div className="grid grid-cols-2 gap-3 mb-6">
-        <Link href="/patient/vitals/log">
-          <Card className="hover:border-primary/30 transition cursor-pointer">
-            <CardContent className="p-4 flex flex-col items-center gap-2">
-              <Activity className="h-6 w-6 text-primary" />
-              <span className="text-sm font-medium">Log Vitals</span>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/patient/medications">
-          <Card className="hover:border-primary/30 transition cursor-pointer">
-            <CardContent className="p-4 flex flex-col items-center gap-2">
-              <Pill className="h-6 w-6 text-primary" />
-              <span className="text-sm font-medium">Medications</span>
-            </CardContent>
-          </Card>
-        </Link>
+    <div className="space-y-5">
+      {/* ── Greeting + Day Counter ── */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">
+          Hi, {userName}
+        </h1>
+        <div className="flex items-center gap-2 mt-1">
+          <div className="flex-1 h-2 rounded-full bg-secondary overflow-hidden">
+            <div
+              className="h-full rounded-full bg-primary transition-all duration-500"
+              style={{
+                width: `${(RECOVERY_DAY / RECOVERY_TOTAL) * 100}%`,
+              }}
+            />
+          </div>
+          <span className="text-xs font-semibold text-primary whitespace-nowrap">
+            Day {RECOVERY_DAY} of {RECOVERY_TOTAL}
+          </span>
+        </div>
+        <p className="text-sm text-muted-foreground mt-1">
+          Your recovery is on track. Keep it up!
+        </p>
       </div>
 
-      {/* Upcoming follow-up */}
-      {upcomingFollowUp && (
-        <Card className="mb-4 border-primary/20 bg-primary/5">
-          <CardContent className="p-4 flex items-center gap-3">
-            <Calendar className="h-5 w-5 text-primary shrink-0" />
-            <div className="flex-1">
-              <div className="text-sm font-medium">Upcoming Follow-Up</div>
-              <div className="text-xs text-muted-foreground">
-                {new Date(upcomingFollowUp.followUpDate!).toLocaleDateString(
-                  "en-US",
-                  { weekday: "long", month: "long", day: "numeric" }
-                )}{" "}
-                — {upcomingFollowUp.diagnosis}
+      {/* ── Health Score Circle ── */}
+      <Card>
+        <CardContent className="py-6 flex justify-center">
+          <HealthScoreRing score={HEALTH_SCORE} />
+        </CardContent>
+      </Card>
+
+      {/* ── Daily Checklist ── */}
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Daily Checklist</CardTitle>
+            <span className="text-xs font-semibold text-primary">
+              {completedCount} of {checklist.length} completed
+            </span>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {checklist.map((item) => (
+              <Link
+                key={item.id}
+                href={item.href}
+                className={`flex items-center gap-3 rounded-lg border p-3 transition hover:bg-accent ${
+                  item.completed
+                    ? "border-emerald-500/20 bg-emerald-500/5"
+                    : "border-border"
+                }`}
+              >
+                {item.completed ? (
+                  <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
+                ) : (
+                  <Circle className="h-5 w-5 text-muted-foreground shrink-0" />
+                )}
+                <span
+                  className={`text-sm font-medium flex-1 ${
+                    item.completed
+                      ? "line-through text-muted-foreground"
+                      : ""
+                  }`}
+                >
+                  {item.label}
+                </span>
+                {!item.completed && (
+                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                )}
+              </Link>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Upcoming Appointment ── */}
+      <Link href="/patient/appointments">
+        <Card className="border-primary/20 bg-primary/5 hover:border-primary/40 transition cursor-pointer">
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 shrink-0">
+              <Calendar className="h-6 w-6 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold">
+                Follow-up with Dr. Sharma
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                Scheduled appointment
+              </div>
+            </div>
+            <div className="text-right shrink-0">
+              <div className="text-2xl font-bold text-primary">3</div>
+              <div className="text-[10px] font-medium text-primary/70 uppercase tracking-wider">
+                days
               </div>
             </div>
           </CardContent>
         </Card>
-      )}
+      </Link>
 
-      {/* Today's medication checklist */}
-      <Card className="mb-4">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Today&apos;s Medications</CardTitle>
-            <Link
-              href="/patient/medications"
-              className="text-xs text-primary hover:underline flex items-center gap-1"
-            >
-              View all <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {allMedications.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No medications prescribed yet.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {allMedications.map((med) => {
-                const todayLog = todayLogs.find(
-                  (l) => l.medicationId === med.id
-                );
-                return (
-                  <div
-                    key={med.id}
-                    className="flex items-center justify-between rounded-lg border border-border p-3"
-                  >
-                    <div>
-                      <div className="text-sm font-medium">{med.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {med.dosage} &middot; {med.frequency}
-                      </div>
+      {/* ── Rewards / Streak Progress ── */}
+      <Link href="/patient/rewards">
+        <Card className="hover:border-amber-500/30 transition cursor-pointer mt-5">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-amber-500" />
+                <span className="text-sm font-semibold">Rewards</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Flame className="h-4 w-4 text-orange-500" />
+                <span className="text-sm font-bold text-orange-500">
+                  Day {STREAK_DAYS} Streak
+                </span>
+              </div>
+            </div>
+            <div className="w-full bg-secondary rounded-full h-3 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-500"
+                style={{ width: `${streakProgress}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-xs text-muted-foreground">
+                {NEXT_MILESTONE - STREAK_DAYS} days to next badge
+              </span>
+              <Badge variant="outline" className="text-[10px]">
+                Day {NEXT_MILESTONE} Badge
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+      </Link>
+
+      {/* ── Quick Stats (2×2) ── */}
+      <div>
+        <h2 className="text-sm font-semibold mb-3">Quick Stats</h2>
+        <div className="grid grid-cols-2 gap-3">
+          {quickStats.map((stat) => {
+            const Icon = stat.icon;
+            return (
+              <Card key={stat.label}>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div
+                      className={`flex items-center justify-center w-8 h-8 rounded-lg ${stat.bg}`}
+                    >
+                      <Icon className={`h-4 w-4 ${stat.color}`} />
                     </div>
-                    {todayLog ? (
-                      todayLog.taken ? (
-                        <Badge variant="success" className="gap-1">
-                          <CheckCircle2 className="h-3 w-3" />
-                          Taken
-                        </Badge>
-                      ) : (
-                        <Badge variant="destructive" className="gap-1">
-                          <XCircle className="h-3 w-3" />
-                          Missed
-                        </Badge>
-                      )
-                    ) : (
-                      <Badge variant="outline">Pending</Badge>
-                    )}
+                    <span className="text-xs text-muted-foreground">
+                      {stat.label}
+                    </span>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-xl font-bold">{stat.value}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {stat.unit}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
 
-      {/* Latest Vitals */}
-      <Card className="mb-4">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Latest Vitals</CardTitle>
-            <Link
-              href="/patient/vitals/history"
-              className="text-xs text-primary hover:underline flex items-center gap-1"
-            >
-              History <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {!latestVital ? (
-            <div className="text-center py-4">
-              <p className="text-sm text-muted-foreground mb-3">
-                No vitals logged yet.
-              </p>
-              <Link href="/patient/vitals/log">
-                <Button size="sm" variant="outline">
-                  Log Your First Vitals
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3">
-              {latestVital.bloodPressureSystolic && (
-                <div className="rounded-lg bg-secondary p-3">
-                  <div className="text-xs text-muted-foreground">Blood Pressure</div>
-                  <div className="text-lg font-bold">
-                    {latestVital.bloodPressureSystolic}/
-                    {latestVital.bloodPressureDiastolic}
-                  </div>
-                  <div className="text-xs text-muted-foreground">mmHg</div>
-                </div>
-              )}
-              {latestVital.weight && (
-                <div className="rounded-lg bg-secondary p-3">
-                  <div className="text-xs text-muted-foreground">Weight</div>
-                  <div className="text-lg font-bold">{latestVital.weight}</div>
-                  <div className="text-xs text-muted-foreground">kg</div>
-                </div>
-              )}
-              {latestVital.glucose && (
-                <div className="rounded-lg bg-secondary p-3">
-                  <div className="text-xs text-muted-foreground">Glucose</div>
-                  <div className="text-lg font-bold">{latestVital.glucose}</div>
-                  <div className="text-xs text-muted-foreground">mg/dL</div>
-                </div>
-              )}
-              {latestVital.temperature && (
-                <div className="rounded-lg bg-secondary p-3">
-                  <div className="text-xs text-muted-foreground">Temperature</div>
-                  <div className="text-lg font-bold">{latestVital.temperature}</div>
-                  <div className="text-xs text-muted-foreground">°F</div>
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Recent records */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Discharge Records</CardTitle>
-            <Link
-              href="/patient/records"
-              className="text-xs text-primary hover:underline flex items-center gap-1"
-            >
-              View all <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {plans.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No discharge records yet.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {plans.slice(0, 3).map((plan) => (
-                <Link
-                  key={plan.id}
-                  href={`/patient/records/${plan.id}`}
-                  className="block rounded-lg border border-border p-3 hover:bg-accent transition"
-                >
-                  <div className="font-medium text-sm">{plan.diagnosis}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    {plan.medications.length} medication
-                    {plan.medications.length !== 1 ? "s" : ""}
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* ── Emergency Call Button ── */}
+      <div className="pt-2 pb-4">
+        <a href="tel:911" className="block">
+          <Button
+            variant="destructive"
+            className="w-full h-14 text-base font-semibold gap-2 shadow-lg shadow-red-500/20"
+          >
+            <Phone className="h-5 w-5" />
+            Emergency &mdash; Call Care Team
+          </Button>
+        </a>
+      </div>
     </div>
   );
 }

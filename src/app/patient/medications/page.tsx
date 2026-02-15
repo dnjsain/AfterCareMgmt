@@ -20,6 +20,12 @@ import {
   Pencil,
   Building2,
   User,
+  Bell,
+  Camera,
+  AlertTriangle,
+  MapPin,
+  Clock,
+  Package,
 } from "lucide-react";
 
 interface DischargePlan {
@@ -389,6 +395,86 @@ export default function MedicationsPage() {
           ) : undefined
         }
       />
+
+      {/* Smart Reminder Banner */}
+      <Card className="mb-4 border-amber-200 bg-amber-50">
+        <CardContent className="p-3">
+          <div className="flex items-center gap-3">
+            <div className="rounded-full bg-amber-100 p-2">
+              <Bell className="h-4 w-4 text-amber-600" />
+            </div>
+            <div className="flex-1">
+              <div className="text-sm font-medium text-amber-800">
+                Next dose in 28 min
+              </div>
+              <div className="text-xs text-amber-600">
+                Metoprolol 50mg — Evening dose at 8:00 PM
+              </div>
+            </div>
+            <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs">
+              <Clock className="h-3 w-3 mr-1" />
+              Soon
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Refill Alert */}
+      <Card className="mb-4 border-red-200 bg-red-50">
+        <CardContent className="p-3">
+          <div className="flex items-center gap-3">
+            <div className="rounded-full bg-red-100 p-2">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+            </div>
+            <div className="flex-1">
+              <div className="text-sm font-medium text-red-800">
+                Refill Needed — 3 days left
+              </div>
+              <div className="text-xs text-red-600">
+                Atorvastatin 40mg is running low
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="shrink-0 border-red-200 text-red-700 hover:bg-red-100 text-xs"
+            >
+              <Package className="h-3 w-3" />
+              Refill
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Photo Pill Confirmation + Pharmacy */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <Card className="hover:border-primary/30 transition cursor-pointer">
+          <CardContent className="p-3 flex flex-col items-center gap-2">
+            <div className="rounded-full bg-primary/10 p-2">
+              <Camera className="h-5 w-5 text-primary" />
+            </div>
+            <span className="text-xs font-medium text-center">
+              Verify Pill
+            </span>
+            <span className="text-[10px] text-muted-foreground text-center">
+              AI pill recognition
+            </span>
+          </CardContent>
+        </Card>
+        <Card className="hover:border-primary/30 transition cursor-pointer">
+          <CardContent className="p-3 flex flex-col items-center gap-2">
+            <div className="rounded-full bg-green-50 p-2">
+              <MapPin className="h-5 w-5 text-green-600" />
+            </div>
+            <span className="text-xs font-medium text-center">
+              Find Pharmacy
+            </span>
+            <span className="text-[10px] text-muted-foreground text-center">
+              Nearby & delivery
+            </span>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Add / Edit medication form */}
       {showAddForm && (
