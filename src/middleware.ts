@@ -6,8 +6,8 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const role = req.auth?.user?.role;
 
-  // API routes for auth - always allow
-  if (pathname.startsWith("/api/auth")) {
+  // API routes - always allow (they handle their own auth)
+  if (pathname.startsWith("/api")) {
     return NextResponse.next();
   }
 
