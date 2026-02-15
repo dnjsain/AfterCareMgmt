@@ -6,11 +6,17 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const role = req.auth?.user?.role;
 
-  // Public routes - allow access
-  const publicRoutes = ["/", "/login", "/register"];
-  if (publicRoutes.some((r) => pathname === r || pathname.startsWith(r + "?"))) {
-    // If logged in and trying to access login/register, redirect to dashboard
-    if (isLoggedIn && (pathname === "/login" || pathname === "/register")) {
+  // API routes for auth - always allow
+  if (pathname.startsWith("/api/auth")) {
+    return NextResponse.next();
+  }
+
+  // Public routes - always allow access (never redirect away from these)
+  const isPublicRoute = pathname === "/" || pathname === "/login" || pathname.startsWith("/register");
+  if (isPublicRoute) {
+    // Only redirect logged-in users if we have a valid role
+    // This prevents redirect loops when session is corrupted
+    if (isLoggedIn && role && (pathname === "/login" || pathname.startsWith("/register"))) {
       const dashboardUrl =
         role === "HOSPITAL" ? "/hospital/dashboard" : "/patient/dashboard";
       return NextResponse.redirect(new URL(dashboardUrl, req.url));
@@ -18,14 +24,11 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
-  // API routes for auth - always allow
-  if (pathname.startsWith("/api/auth")) {
-    return NextResponse.next();
-  }
-
-  // Protected routes - require auth
-  if (!isLoggedIn) {
-    return NextResponse.redirect(new URL("/login", req.url));
+  // Protected routes - require auth with valid role
+  if (!isLoggedIn || !role) {
+    // Clear any stale session by redirecting to login
+    const response = NextResponse.redirect(new URL("/login", req.url));
+    return response;
   }
 
   // Role-based access
