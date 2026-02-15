@@ -8,7 +8,7 @@ export default auth((req) => {
 
   // Public routes - allow access
   const publicRoutes = ["/", "/login", "/register"];
-  if (publicRoutes.some((r) => pathname === r)) {
+  if (publicRoutes.some((r) => pathname === r || pathname.startsWith(r + "?"))) {
     // If logged in and trying to access login/register, redirect to dashboard
     if (isLoggedIn && (pathname === "/login" || pathname === "/register")) {
       const dashboardUrl =

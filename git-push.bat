@@ -1,6 +1,6 @@
 @echo off
 cd /d "c:\Users\dnsja\Desktop\AfterCareMgmt"
 git add .
-git commit -m "Update package.json with postinstall script"
-git push -u origin main
-pause
+git commit -m "Fix redirect loop on Vercel"
+git push origin main
+del "%~f0"
